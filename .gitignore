@@ -1,0 +1,12 @@
+.venv/
+.android-tools/
+.idea/
+server/.env
+server/__pycache__/
+__pycache__/
+*.pyc
+android/.gradle/
+android/.kotlin/
+android/local.properties
+android/**/build/
+*.iml
