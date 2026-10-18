@@ -1,4 +1,4 @@
-import os, time, uuid, asyncio
+import os, time, uuid, asyncio, logging
 from collections import deque
 from contextlib import asynccontextmanager
 from dataclasses import dataclass
@@ -9,6 +9,8 @@ from aiogram import Bot, Dispatcher, Router
 from aiogram.types import Message, Update
 from aiogram.filters import Command
 
+logging.basicConfig(level=os.getenv("LOG_LEVEL", "INFO"), format="%(asctime)s %(levelname)s %(name)s: %(message)s")
+log = logging.getLogger("sms_bridge")
 load_dotenv(); BOT_TOKEN=os.environ["BOT_TOKEN"]; ADMIN=int(os.environ["ADMIN_TELEGRAM_ID"])
 DEVICE_TOKEN=os.environ["DEVICE_TOKEN"]; WEBHOOK_SECRET=os.environ["WEBHOOK_SECRET"]
 ALLOWED={x.strip() for x in os.getenv("ALLOWED_SMS_NUMBERS","").split(",") if x.strip()}
@@ -35,7 +37,9 @@ async def status(m:Message):
 async def text(m:Message):
     if not allowed_user(m): await m.answer("Доступ запрещён."); return
     if not m.text: return
-    async with lock: outbox.append(Job(str(uuid.uuid4()),m.text,time.time(),MAIN))
+    job_id = str(uuid.uuid4())
+    async with lock: outbox.append(Job(job_id,m.text,time.time(),MAIN))
+    log.info("queued outgoing SMS id=%s length=%d target=%s", job_id, len(m.text), MAIN)
     await m.answer("Сообщение поставлено в очередь SMS.")
 @asynccontextmanager
 async def life(app): yield; await bot.session.close()
@@ -54,6 +58,7 @@ async def queue(x_token:str=Header(default="")):
     async with lock:
         for j in list(outbox):
             if not j.leased or now-j.leased>120: j.leased=now; result.append({"id":j.id,"text":j.text,"target":j.target})
+    log.info("device queue poll returned=%d pending=%d", len(result[:20]), len(outbox))
     return {"messages":result[:20]}
 @app.post("/device/ack")
 async def ack(a:Ack,x_token:str=Header(default="")):
@@ -61,8 +66,12 @@ async def ack(a:Ack,x_token:str=Header(default="")):
     async with lock:
         for j in list(outbox):
             if j.id==a.message_id:
-                if a.success: outbox.remove(j); delivered.add(j.id)
-                else: j.leased=0; errors.append((j.id,a.error or "sms failure"))
+                if a.success:
+                    outbox.remove(j); delivered.add(j.id)
+                    log.info("SMS delivered/accepted id=%s", a.message_id)
+                else:
+                    j.leased=0; errors.append((j.id,a.error or "sms failure"))
+                    log.warning("SMS failed id=%s error=%s", a.message_id, a.error or "sms failure")
                 break
     return {"ok":True}
 @app.post("/device/incoming")
@@ -70,6 +79,7 @@ async def incoming(x:TextIn,x_token:str=Header(default="")):
     global device_last; auth(x_token); device_last=time.time()
     if number(x.sender) not in {number(n) for n in ALLOWED} or x.external_id in seen_incoming: return {"ok":True}
     seen_incoming.add(x.external_id)
+    log.info("incoming SMS accepted id=%s sender=%s length=%d", x.external_id, number(x.sender), len(x.text))
     await bot.send_message(ADMIN, x.text)
     return {"ok":True}
 @app.get("/health")
