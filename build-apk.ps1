@@ -52,6 +52,8 @@ Push-Location (Join-Path $root "android")
 try {
   if (-not (Test-Path "gradlew.bat")) { & $gradleBat wrapper --gradle-version 8.9 }
   & .\gradlew.bat assembleDebug --no-daemon
+  if ($LASTEXITCODE -ne 0) { throw "Gradle build failed with exit code $LASTEXITCODE" }
   $apk = Join-Path (Get-Location) "app\build\outputs\apk\debug\app-debug.apk"
+  if (-not (Test-Path $apk)) { throw "Gradle reported success but APK was not found: $apk" }
   Write-Host "`nAPK готов:`n$apk" -ForegroundColor Green
 } finally { Pop-Location }

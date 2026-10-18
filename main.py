@@ -1,0 +1,6 @@
+"""Bothost-compatible entrypoint for the FastAPI service."""
+import os
+import uvicorn
+
+if __name__ == "__main__":
+    uvicorn.run("server.main:app", host="0.0.0.0", port=int(os.getenv("PORT", "3000")))

@@ -33,10 +33,10 @@ android/app/build/outputs/apk/debug/app-debug.apk
 
 Откройте `android/` в Android Studio (JDK 17), Sync, Build APK. На телефоне установите APK, выдайте `SEND_SMS`, `RECEIVE_SMS`, `POST_NOTIFICATIONS` и автозапуск/исключение из battery optimization. В приложении укажите URL, device token, основной номер, разрешённые номера. На Android 4+ приложение может получать SMS через receiver без default-SMS роли; если прошивка требует её, назначьте приложение SMS по умолчанию в системных настройках. 
 
-Нажмите «Подключить». WorkManager опрашивает сервер (минимум Android-ограничений — 15 минут), foreground service опрашивает чаще при активном подключении. Входящие SMS отфильтровываются по E.164 номерам. Тексты и токены не пишутся в журнал.
+Нажмите «Подключить». WorkManager опрашивает сервер (минимальный период Android — около 15 минут), а кнопка «Check connection» запускает немедленный разовый опрос. Входящие SMS отфильтровываются по номерам. Для диагностики используйте Logcat с тегами `SmsBridge.Worker` и `SmsBridge.SmsSent`: там видны polling, HTTP-коды, запуск SMS и результат `SMS_SENT`. Тексты и токены в журнал не пишутся.
 
 ## Тестирование
 
 Нажмите `/status` в Telegram (только admin), отправьте тестовый текст боту, проверьте доставку SMS, ответьте на SMS с разрешённого номера. Повторный poll/ack безопасен: сервер использует idempotency keys, Android — уникальные ID и локальную очередь. При рестарте сервера RAM-очередь теряется намеренно.
 
-Сервис Telegram не принимает сообщения от других ID. Для production используйте long random secrets, HTTPS, firewall/rate limiting Bothost и не публикуйте `.env`.
+Сервис Telegram не принимает сообщения от других ID. Телефон должен быть включён, зарегистрирован в сети и иметь интернет, SIM-карту и возможность отправлять SMS. Для production используйте long random secrets, HTTPS, firewall/rate limiting Bothost и не публикуйте `.env`.

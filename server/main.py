@@ -84,3 +84,9 @@ async def incoming(x:TextIn,x_token:str=Header(default="")):
     return {"ok":True}
 @app.get("/health")
 async def health(): return {"ok":True,"device_online":time.time()-device_last<180,"queue":len(outbox)}
+@app.get("/")
+async def root(): return {"service":"sms-telegram-bridge","ok":True,"health":"/health"}
+
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run("server.main:app", host="0.0.0.0", port=int(os.getenv("PORT", "3000")))
