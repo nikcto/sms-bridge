@@ -13,6 +13,9 @@ import androidx.activity.ComponentActivity
 import androidx.core.app.ActivityCompat
 
 class MainActivity : ComponentActivity() {
+    companion object {
+        private const val DEFAULT_ALLOWED_NUMBERS = "89677357000,89273484600"
+    }
     private lateinit var logView: TextView
     private val handler = Handler(Looper.getMainLooper())
     private val refresh = object : Runnable { override fun run() { refreshLog(); handler.postDelayed(this, 1000) } }
@@ -27,7 +30,9 @@ class MainActivity : ComponentActivity() {
         val phone = field("Main phone E.164")
         val allowed = field("Allowed numbers, comma-separated")
         url.setText(prefs.getString("url", "")); token.setText(prefs.getString("token", ""))
-        phone.setText(prefs.getString("phone", "")); allowed.setText(prefs.getString("allow", ""))
+        phone.setText(prefs.getString("phone", ""))
+        prefs.edit().putString("allow", DEFAULT_ALLOWED_NUMBERS).apply()
+        allowed.setText(DEFAULT_ALLOWED_NUMBERS)
         val status = TextView(this).apply { text = "Status: not connected"; textSize = 16f }
         val connect = Button(this).apply { text = "CONNECT" }
         val stop = Button(this).apply { text = "STOP" }
